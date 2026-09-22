@@ -969,6 +969,27 @@ async function retryUnsyncedPlaylists() {
     try { await syncPlaylistToGitHub(playlist); } catch { /* vẫn giữ ở máy, thử lại lần tải trang sau */ }
   }
 }
+// Mỗi khi mở xem 1 playlist, lấy thẳng playlist.json mới nhất từ GitHub để hiển thị,
+// thay vì tin vào bản lưu cục bộ (tránh tình trạng các tab/máy khác nhau thấy khác nhau).
+// Nếu playlist đang có thay đổi CHƯA kịp đồng bộ (synced === false) thì bỏ qua, không
+// ghi đè, để không làm mất bài vừa thêm/xóa ở máy này.
+async function refreshPlaylistFromGitHub(playlistId) {
+  if (!githubRepo) return;
+  const playlist = state.playlists.find(item => item.id === playlistId);
+  if (!playlist || playlist.synced === false) return;
+  try {
+    const safeName = playlist.name.replace(/[<>:"/\\|?*]/g, '-').trim();
+    const encodedPath = `playlist/${safeName}/playlist.json`.split('/').map(encodeURIComponent).join('/');
+    const response = await fetch(`https://raw.githubusercontent.com/${githubRepo.owner}/${githubRepo.name}/${githubBranch}/${encodedPath}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) return;
+    const remote = await response.json();
+    const tracks = (remote.tracks || []).map(path => seedTracks.find(track => track.path === path)?.id).filter(Boolean);
+    playlist.trackIds = tracks;
+    playlist.synced = true;
+    saveState();
+    if (view.type === 'playlist' && view.value === playlistId) renderAll();
+  } catch { /* mạng lỗi hoặc chưa có file trên GitHub thì cứ giữ bản đang có */ }
+}
 function chooseUploadFolder() {
   const folders = [...new Set(artists())];
   if (!folders.length) { showToast('Chưa có thư mục nhạc trên GitHub để chọn.'); return Promise.resolve(''); }
@@ -1020,7 +1041,7 @@ function moveQueue(direction) {
 
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { view = { type: button.dataset.view, value: '' }; document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item === button)); renderAll(); }));
 els.artistList.addEventListener('click', event => { const edit = event.target.closest('[data-edit-artist]'); if (edit) return openArtistDialog(edit.dataset.editArtist); const remove = event.target.closest('[data-delete-artist]'); if (remove) return deleteArtist(remove.dataset.deleteArtist); const folder = event.target.closest('[data-folder]'); if (!folder) return; view = { type: 'folder', value: folder.dataset.folder }; document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); renderAll(); });
-els.playlistList.addEventListener('click', event => { const deleteId = event.target.dataset.deletePlaylist; if (deleteId) return deletePlaylist(deleteId); const playlist = event.target.closest('[data-playlist]'); if (playlist) { view = { type: 'playlist', value: playlist.dataset.playlist }; document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); renderAll(); } });
+els.playlistList.addEventListener('click', event => { const deleteId = event.target.dataset.deletePlaylist; if (deleteId) return deletePlaylist(deleteId); const playlist = event.target.closest('[data-playlist]'); if (playlist) { view = { type: 'playlist', value: playlist.dataset.playlist }; document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); renderAll(); refreshPlaylistFromGitHub(playlist.dataset.playlist); } });
 els.trackList.addEventListener('click', event => { const row = event.target.closest('[data-track-id]'); if (!row) return; const id = row.dataset.trackId; const track = allTracks().find(item => item.id === id); if (event.target.closest('[data-play]')) { playbackSource = sourceForView(); return playTrack(track, getVisibleTracks()); } if (event.target.closest('[data-favorite]')) return toggleFavorite(id); if (event.target.closest('[data-add-queue]')) return addToQueue(id); if (event.target.closest('[data-add]')) return addToPlaylist(id); if (event.target.closest('[data-remove-from-playlist]')) return removeTrackFromPlaylist(id); if (event.target.closest('[data-delete]')) return deleteTrack(id); if (!event.target.closest('button')) { playbackSource = sourceForView(); playTrack(track, getVisibleTracks()); } });
 els.queueList.addEventListener('click', event => { const id = event.target.dataset.queuePlay; if (id) { const track = queue.find(item => item.id === id); if (track) playTrack(track); } });
 document.querySelector('#createPlaylist').addEventListener('click', createPlaylist);
@@ -1122,6 +1143,10 @@ if (!hasAdminSession && !isInstalledPwa) accessDialog.showModal();
 })();
 
 loadLibrary();
+// Nếu lúc thêm bài bị mất mạng/GitHub từ chối, playlist chỉ được lưu ở máy
+// (synced: false). Ngay khi có mạng trở lại thì tự thử đẩy lên GitHub luôn,
+// không cần đợi người dùng tải lại trang mới đồng bộ.
+window.addEventListener('online', retryUnsyncedPlaylists);
 
 function openPlaylistDialog(mode, trackId = '') {
   const dialog = document.querySelector('#playlistDialog');
