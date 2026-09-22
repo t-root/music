@@ -866,8 +866,9 @@ function updateClearCurrentCollectionButton() {
   const tracks = view.type === 'folder' ? artistTracks(view.value) : playlist?.trackIds || [];
   const inCollection = view.type === 'folder' || view.type === 'playlist';
   button.hidden = !inCollection;
-  button.disabled = !canWrite || !tracks.length;
-  button.title = view.type === 'folder' ? 'Xóa hết bài của nghệ sĩ này' : 'Xóa hết bài trong playlist này';
+  button.disabled = !canWrite || (view.type === 'playlist' ? !playlist : !tracks.length);
+  button.title = view.type === 'folder' ? 'Xóa nghệ sĩ này' : 'Xóa playlist này';
+  button.innerHTML = `<span>×</span> Xóa ${view.type === 'folder' ? 'nghệ sĩ' : 'playlist'}`;
 }
 function renderPlaylists() {
   const folders = artists().map(artist => `<button class="playlist-item artist-item ${view.type === 'folder' && view.value === artist ? 'active' : ''}" data-folder="${esc(artist)}"><span>▱</span><span class="artist-name">${esc(artist)}</span><span class="artist-actions"><i data-edit-artist="${esc(artist)}" title="Đổi tên nghệ sĩ">✎</i><i data-delete-artist="${esc(artist)}" title="Xóa nghệ sĩ">×</i></span></button>`).join('');
@@ -1286,21 +1287,6 @@ async function deletePlaylist(id) {
     saveState(); renderAll(); showToast('Đã xóa playlist trên GitHub.');
   } catch (error) { showToast(error.message); }
 }
-async function removeAllTracksFromPlaylist() {
-  if (!canWrite) return showToast('Chế độ chỉ nghe.');
-  if (view.type !== 'playlist') return;
-  const playlist = state.playlists.find(item => item.id === view.value);
-  if (!playlist || !playlist.trackIds.length) return showToast('Playlist chưa có bài hát.');
-  const count = playlist.trackIds.length;
-  if (!(await askConfirmation('Xóa hết bài trong playlist', `Xóa tất cả ${count} bài khỏi playlist “${playlist.name}”? Bài hát vẫn còn trong thư viện.`, 'Xóa hết'))) return;
-  playlist.trackIds = [];
-  playlist.synced = false;
-  saveState();
-  renderAll();
-  try { await syncPlaylistToGitHub(playlist); showToast(`Đã xóa hết bài trong ${playlist.name}.`); }
-  catch (error) { showToast(`Đã xóa cục bộ: ${error.message}`); }
-}
-
 function renderAddTrackChoices() {
   const playlist = state.playlists.find(item => item.id === view.value);
   const list = document.querySelector('#addTrackList');
@@ -1429,7 +1415,7 @@ async function deleteArtist(name) {
   } catch (error) { showToast(error.message); }
 }
 function clearCurrentCollection() {
-  if (view.type === 'playlist') return removeAllTracksFromPlaylist();
+  if (view.type === 'playlist') return deletePlaylist(view.value);
   if (view.type === 'folder') return deleteArtist(view.value);
 }
 document.querySelector('#cancelArtist').addEventListener('click', () => document.querySelector('#artistDialog').close());
