@@ -47,6 +47,9 @@ button { border: 0; cursor: pointer; }
 .playlist-item span:first-child { width: 16px; color: var(--blue); font-size: 16px; text-align: center; }
 .playlist-item .playlist-delete { display: none; margin-left: auto; color: #aaaba8; font-size: 16px; }
 .playlist-item:hover .playlist-delete { display: block; }
+.bulk-delete-button { color: var(--muted); font-size: 18px; }
+.bulk-delete-button:hover { color: var(--coral); }
+.bulk-delete-button:disabled { opacity: .35; cursor: not-allowed; }
 .sidebar-footer { margin-top: auto; padding-top: 30px; }
 .upload-button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; color: var(--ink); font-size: 12px; font-weight: 700; border: 1px dashed #c9c7c0; border-radius: 11px; cursor: pointer; }
 .upload-button span { color: var(--coral); font-size: 18px; }
@@ -217,7 +220,7 @@ div { background: transparent; }
 .upload-folder-select option { color: var(--ink); background: #080b0e; }
 .upload-dialog-actions { margin-top: 8px; }
 .upload-dialog-actions button { height: 48px; }
-.read-only .upload-actions, .read-only #createPlaylist, .read-only #addTracksButton, .read-only #favoriteButton, .read-only .playlist-delete, .read-only .artist-actions, .read-only .row-actions .row-button:not(.play-row) { display: none !important; }
+.read-only .upload-actions, .read-only #createPlaylist, .read-only #deleteAllArtists, .read-only #deleteAllPlaylists, .read-only #addTracksButton, .read-only #favoriteButton, .read-only .playlist-delete, .read-only .artist-actions, .read-only .row-actions .row-button:not(.play-row) { display: none !important; }
 
 /* Keep row actions and repeat states from colliding. */
 .main-content { padding-bottom: 190px; }
@@ -225,9 +228,9 @@ div { background: transparent; }
 .track-row { grid-template-columns: 38px minmax(0, 1fr) 70px 160px; }
 .row-actions { width: 160px; min-width: 160px; flex: 0 0 160px; }
 .row-button { flex: 0 0 27px; }
-/* Phân biệt rõ "xóa hẳn khỏi thư viện" (nguy hiểm, màu đỏ) với "gỡ khỏi playlist" (an toàn, màu trung tính). */
-.row-button.delete-row { color: #b23a3a; font-size: 13px; }
-.row-button.delete-row:hover { color: #fff; background: #d64545; }
+/* Dùng ký tự X để nút xóa vẫn theo màu chủ đề, không bị emoji tự đổi màu. */
+.row-button.delete-row { color: var(--muted); font-size: 18px; line-height: 1; }
+.row-button.delete-row:hover { color: var(--coral); background: transparent; }
 .row-button.remove-from-playlist { color: var(--muted); font-size: 20px; font-weight: 700; line-height: 1; }
 .row-button.remove-from-playlist:hover { color: var(--ink); background: rgba(0,0,0,.06); }
 .control-button { min-width: 28px; }

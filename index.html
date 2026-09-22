@@ -21,9 +21,12 @@
         <button class="nav-item" data-view="favorites"><span>♡</span> Yêu thích</button>
       </nav>
       <div class="sidebar-section" data-section="artists">
-        <button type="button" class="section-heading section-toggle" data-toggle="artists" aria-expanded="true">
-          <span class="section-toggle-label"><span class="section-chevron">▾</span> ARTISTS</span>
-        </button>
+        <div class="section-heading section-toggle-row">
+          <button type="button" class="section-toggle" data-toggle="artists" aria-expanded="true">
+            <span class="section-toggle-label"><span class="section-chevron">▾</span> ARTISTS</span>
+          </button>
+          <button id="deleteAllArtists" class="icon-button bulk-delete-button" title="Xóa hết nghệ sĩ" aria-label="Xóa hết nghệ sĩ">×</button>
+        </div>
         <div id="artistList" class="playlist-list section-body"></div>
       </div>
       <div class="sidebar-section playlist-section" data-section="playlists">
@@ -31,6 +34,7 @@
           <button type="button" class="section-toggle" data-toggle="playlists" aria-expanded="true">
             <span class="section-toggle-label"><span class="section-chevron">▾</span> PLAYLISTS</span>
           </button>
+          <button id="deleteAllPlaylists" class="icon-button bulk-delete-button" title="Xóa hết playlist" aria-label="Xóa hết playlist">×</button>
           <button id="createPlaylist" class="icon-button" title="Tạo playlist">+</button>
         </div>
         <div id="playlistList" class="playlist-list section-body"></div>

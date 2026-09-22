@@ -864,6 +864,10 @@ function renderPlaylists() {
   const custom = state.playlists.map(item => `<button class="playlist-item ${view.type === 'playlist' && view.value === item.id ? 'active' : ''}" data-playlist="${esc(item.id)}"><span>♡</span><span>${esc(item.name)}</span><i class="playlist-delete" data-delete-playlist="${esc(item.id)}" title="Xóa playlist">×</i></button>`).join('');
   els.artistList.innerHTML = folders || '<p class="sidebar-note">Chưa có nghệ sĩ</p>';
   els.playlistList.innerHTML = custom || '<p class="sidebar-note">Chưa có playlist</p>';
+  const deleteAllArtists = document.querySelector('#deleteAllArtists');
+  const deleteAllPlaylists = document.querySelector('#deleteAllPlaylists');
+  if (deleteAllArtists) deleteAllArtists.disabled = !canWrite || !folders;
+  if (deleteAllPlaylists) deleteAllPlaylists.disabled = !canWrite || !custom;
 }
 function renderTracks() {
   const tracks = getVisibleTracks();
@@ -873,7 +877,7 @@ function renderTracks() {
   els.empty.hidden = tracks.length > 0; els.trackList.innerHTML = tracks.map((track, index) => {
     const liked = state.favorites.includes(track.id);
     const playing = currentTrack?.id === track.id;
-    return `<article class="track-row${playing ? ' is-playing' : ''}" data-track-id="${esc(track.id)}"><span class="track-index">${playing && !audio.paused ? '♫' : String(index + 1).padStart(2, '0')}</span><div class="track-main"><div class="track-art ${colors[index % colors.length]}">${playing ? '♫' : '♪'}</div><div class="track-name"><strong>${esc(track.title)}</strong><span>${esc(track.artist)}${track.local ? ' · đã tải lên' : ''}</span></div></div><span class="track-album">${esc(track.artist)}</span><span class="track-duration">${track.duration ? formatTime(track.duration) : '--:--'}</span><div class="row-actions"><button class="row-button play-row" data-play="${esc(track.id)}" title="Phát">▶</button><button class="row-button" data-favorite="${esc(track.id)}" title="${liked ? 'Bỏ yêu thích' : 'Yêu thích'}">${liked ? '♥' : '♡'}</button><button class="row-button" data-add-queue="${esc(track.id)}" title="Thêm vào hàng đợi">≡+</button><button class="row-button" data-add="${esc(track.id)}" title="Thêm vào playlist">+</button>${view.type === 'playlist' ? `<button class="row-button remove-from-playlist" data-remove-from-playlist="${esc(track.id)}" title="Xóa khỏi playlist (bài hát vẫn còn trong thư viện)">−</button>` : `<button class="row-button delete-row" data-delete="${esc(track.id)}" title="Xóa hẳn khỏi thư viện">🗑</button>`}</div></article>`;
+    return `<article class="track-row${playing ? ' is-playing' : ''}" data-track-id="${esc(track.id)}"><span class="track-index">${playing && !audio.paused ? '♫' : String(index + 1).padStart(2, '0')}</span><div class="track-main"><div class="track-art ${colors[index % colors.length]}">${playing ? '♫' : '♪'}</div><div class="track-name"><strong>${esc(track.title)}</strong><span>${esc(track.artist)}${track.local ? ' · đã tải lên' : ''}</span></div></div><span class="track-album">${esc(track.artist)}</span><span class="track-duration">${track.duration ? formatTime(track.duration) : '--:--'}</span><div class="row-actions"><button class="row-button play-row" data-play="${esc(track.id)}" title="Phát">▶</button><button class="row-button" data-favorite="${esc(track.id)}" title="${liked ? 'Bỏ yêu thích' : 'Yêu thích'}">${liked ? '♥' : '♡'}</button><button class="row-button" data-add-queue="${esc(track.id)}" title="Thêm vào hàng đợi">≡+</button><button class="row-button" data-add="${esc(track.id)}" title="Thêm vào playlist">+</button>${view.type === 'playlist' ? `<button class="row-button remove-from-playlist" data-remove-from-playlist="${esc(track.id)}" title="Xóa khỏi playlist (bài hát vẫn còn trong thư viện)">−</button>` : `<button class="row-button delete-row" data-delete="${esc(track.id)}" title="Xóa hẳn khỏi thư viện">×</button>`}</div></article>`;
   }).join('');
 }
 function renderQueue() { const total = document.querySelector('#queueTotal'); if (total) total.textContent = `${queue.length} bài · ${durationLabel(queue)}`; updateQueueRepeatButton(); els.queueList.innerHTML = queue.length ? queue.map((track, index) => { const playing = currentTrack?.id === track.id; return `<div class="queue-item${playing ? ' is-current' : ''}"><div class="track-art ${colors[index % colors.length]}">${playing && !audio.paused ? '♫' : '♪'}</div><div class="queue-item-copy"><strong>${esc(track.title)}</strong><span>${esc(track.artist)} · ${Number.isFinite(track.duration) ? formatTime(track.duration) : '--:--'}${playing ? ' · đang phát' : ''}</span></div><button class="queue-item-play" data-queue-play="${esc(track.id)}" title="Phát bài này">▶</button></div>`; }).join('') : '<p class="empty-state">Hàng đợi đang trống.</p>'; }
@@ -1052,6 +1056,8 @@ els.playlistList.addEventListener('click', event => { const deleteId = event.tar
 els.trackList.addEventListener('click', event => { const row = event.target.closest('[data-track-id]'); if (!row) return; const id = row.dataset.trackId; const track = allTracks().find(item => item.id === id); if (event.target.closest('[data-play]')) { playbackSource = sourceForView(); return playTrack(track, getVisibleTracks()); } if (event.target.closest('[data-favorite]')) return toggleFavorite(id); if (event.target.closest('[data-add-queue]')) return addToQueue(id); if (event.target.closest('[data-add]')) return addToPlaylist(id); if (event.target.closest('[data-remove-from-playlist]')) return removeTrackFromPlaylist(id); if (event.target.closest('[data-delete]')) return deleteTrack(id); if (!event.target.closest('button')) { playbackSource = sourceForView(); playTrack(track, getVisibleTracks()); } });
 els.queueList.addEventListener('click', event => { const id = event.target.dataset.queuePlay; if (id) { const track = queue.find(item => item.id === id); if (track) playTrack(track); } });
 document.querySelector('#createPlaylist').addEventListener('click', createPlaylist);
+document.querySelector('#deleteAllArtists').addEventListener('click', deleteAllArtists);
+document.querySelector('#deleteAllPlaylists').addEventListener('click', deleteAllPlaylists);
 document.querySelector('#fileInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#folderInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#cancelUpload').addEventListener('click', () => { document.querySelector('#uploadDialog').close(); uploadFolderResolve?.(''); uploadFolderResolve = null; });
@@ -1275,6 +1281,20 @@ async function deletePlaylist(id) {
     saveState(); renderAll(); showToast('Đã xóa playlist trên GitHub.');
   } catch (error) { showToast(error.message); }
 }
+async function deleteAllPlaylists() {
+  if (!canWrite) return showToast('Chế độ chỉ nghe.');
+  const playlists = [...state.playlists];
+  if (!playlists.length) return showToast('Chưa có playlist để xóa.');
+  if (!(await askConfirmation('Xóa hết playlist', `Xóa tất cả ${playlists.length} playlist?`, 'Xóa hết'))) return;
+  try {
+    for (const playlist of playlists) await deleteRemotePlaylist(playlist);
+    state.playlists = [];
+    if (view.type === 'playlist') view = { type: 'all', value: '' };
+    saveState();
+    renderAll();
+    showToast('Đã xóa hết playlist.');
+  } catch (error) { showToast(error.message); }
+}
 
 function renderAddTrackChoices() {
   const playlist = state.playlists.find(item => item.id === view.value);
@@ -1401,6 +1421,21 @@ async function deleteArtist(name) {
     if (view.type === 'folder' && view.value === name) view = { type: 'all', value: '' };
     await loadLibrary();
     showToast(`Đã xóa nghệ sĩ “${name}”.`);
+  } catch (error) { showToast(error.message); }
+}
+async function deleteAllArtists() {
+  if (!canWrite) return showToast('Chế độ chỉ nghe.');
+  const artistNames = artists();
+  const tracks = artistNames.flatMap(artist => artistTracks(artist));
+  if (!artistNames.length) return showToast('Chưa có nghệ sĩ để xóa.');
+  if (!(await askConfirmation('Xóa hết nghệ sĩ', `Xóa tất cả ${artistNames.length} nghệ sĩ và ${tracks.length} file nhạc khỏi GitHub?`, 'Xóa hết'))) return;
+  const token = getGitHubToken();
+  if (!token) return showToast('Chưa cấu hình quyền GitHub để xóa nghệ sĩ.');
+  try {
+    for (const track of tracks) await deleteGitHubFile(track);
+    if (view.type === 'folder') view = { type: 'all', value: '' };
+    await loadLibrary();
+    showToast('Đã xóa hết nghệ sĩ.');
   } catch (error) { showToast(error.message); }
 }
 document.querySelector('#cancelArtist').addEventListener('click', () => document.querySelector('#artistDialog').close());
