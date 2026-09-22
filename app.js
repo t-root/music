@@ -645,7 +645,7 @@ function drawVisualizer() {
   }
 
   // ---------- [FX 11] Đồng hồ BASS / MID / HI ở góc dưới ----------
-  ctx.font = '9px "Space Grotesk", sans-serif';
+  ctx.font = '9px "Square VN"';
   ctx.textBaseline = 'middle';
   [['BASS', bass], ['MID', mid], ['HI', treble]].forEach(([label, v], i) => {
     const y = H - 62 + i * 12;
@@ -971,6 +971,9 @@ async function retryUnsyncedPlaylists() {
 }
 // Mỗi khi mở xem 1 playlist, lấy thẳng playlist.json mới nhất từ GitHub để hiển thị,
 // thay vì tin vào bản lưu cục bộ (tránh tình trạng các tab/máy khác nhau thấy khác nhau).
+// Dùng GitHub Contents API (api.github.com) thay vì raw.githubusercontent.com, vì
+// raw.githubusercontent.com chạy qua CDN riêng và cache nội dung vài phút — thêm
+// query string né cache không ăn thua với CDN đó. Contents API trả dữ liệu mới ngay.
 // Nếu playlist đang có thay đổi CHƯA kịp đồng bộ (synced === false) thì bỏ qua, không
 // ghi đè, để không làm mất bài vừa thêm/xóa ở máy này.
 async function refreshPlaylistFromGitHub(playlistId) {
@@ -980,9 +983,13 @@ async function refreshPlaylistFromGitHub(playlistId) {
   try {
     const safeName = playlist.name.replace(/[<>:"/\\|?*]/g, '-').trim();
     const encodedPath = `playlist/${safeName}/playlist.json`.split('/').map(encodeURIComponent).join('/');
-    const response = await fetch(`https://raw.githubusercontent.com/${githubRepo.owner}/${githubRepo.name}/${githubBranch}/${encodedPath}?t=${Date.now()}`, { cache: 'no-store' });
+    const token = getGitHubToken();
+    const headers = { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    const response = await fetch(`https://api.github.com/repos/${githubRepo.owner}/${githubRepo.name}/contents/${encodedPath}?ref=${encodeURIComponent(githubBranch)}&t=${Date.now()}`, { headers, cache: 'no-store' });
     if (!response.ok) return;
-    const remote = await response.json();
+    const file = await response.json();
+    const bytes = Uint8Array.from(atob(file.content.replace(/\n/g, '')), char => char.charCodeAt(0));
+    const remote = JSON.parse(new TextDecoder().decode(bytes));
     const tracks = (remote.tracks || []).map(path => seedTracks.find(track => track.path === path)?.id).filter(Boolean);
     playlist.trackIds = tracks;
     playlist.synced = true;
