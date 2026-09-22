@@ -47,9 +47,6 @@ button { border: 0; cursor: pointer; }
 .playlist-item span:first-child { width: 16px; color: var(--blue); font-size: 16px; text-align: center; }
 .playlist-item .playlist-delete { display: none; margin-left: auto; color: #aaaba8; font-size: 16px; }
 .playlist-item:hover .playlist-delete { display: block; }
-.bulk-delete-button { color: var(--muted); font-size: 18px; }
-.bulk-delete-button:hover { color: var(--coral); }
-.bulk-delete-button:disabled { opacity: .35; cursor: not-allowed; }
 .sidebar-footer { margin-top: auto; padding-top: 30px; }
 .upload-button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; color: var(--ink); font-size: 12px; font-weight: 700; border: 1px dashed #c9c7c0; border-radius: 11px; cursor: pointer; }
 .upload-button span { color: var(--coral); font-size: 18px; }
@@ -220,7 +217,7 @@ div { background: transparent; }
 .upload-folder-select option { color: var(--ink); background: #080b0e; }
 .upload-dialog-actions { margin-top: 8px; }
 .upload-dialog-actions button { height: 48px; }
-.read-only .upload-actions, .read-only #createPlaylist, .read-only #deleteAllArtists, .read-only #deleteAllPlaylists, .read-only #addTracksButton, .read-only #favoriteButton, .read-only .playlist-delete, .read-only .artist-actions, .read-only .row-actions .row-button:not(.play-row) { display: none !important; }
+.read-only .upload-actions, .read-only #createPlaylist, .read-only #clearCurrentCollectionButton, .read-only #addTracksButton, .read-only #favoriteButton, .read-only .playlist-delete, .read-only .artist-actions, .read-only .row-actions .row-button:not(.play-row) { display: none !important; }
 
 /* Keep row actions and repeat states from colliding. */
 .main-content { padding-bottom: 190px; }
@@ -233,6 +230,9 @@ div { background: transparent; }
 .row-button.delete-row:hover { color: var(--coral); background: transparent; }
 .row-button.remove-from-playlist { color: var(--muted); font-size: 20px; font-weight: 700; line-height: 1; }
 .row-button.remove-from-playlist:hover { color: var(--ink); background: rgba(0,0,0,.06); }
+.clear-collection-button { color: var(--muted); }
+.clear-collection-button:hover { color: var(--coral); border-color: var(--coral); }
+.clear-collection-button:disabled { opacity: .35; cursor: not-allowed; }
 .control-button { min-width: 28px; }
 #repeatButton { min-width: 38px; white-space: nowrap; }
 

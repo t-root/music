@@ -21,12 +21,9 @@
         <button class="nav-item" data-view="favorites"><span>♡</span> Yêu thích</button>
       </nav>
       <div class="sidebar-section" data-section="artists">
-        <div class="section-heading section-toggle-row">
-          <button type="button" class="section-toggle" data-toggle="artists" aria-expanded="true">
-            <span class="section-toggle-label"><span class="section-chevron">▾</span> ARTISTS</span>
-          </button>
-          <button id="deleteAllArtists" class="icon-button bulk-delete-button" title="Xóa hết nghệ sĩ" aria-label="Xóa hết nghệ sĩ">×</button>
-        </div>
+        <button type="button" class="section-heading section-toggle" data-toggle="artists" aria-expanded="true">
+          <span class="section-toggle-label"><span class="section-chevron">▾</span> ARTISTS</span>
+        </button>
         <div id="artistList" class="playlist-list section-body"></div>
       </div>
       <div class="sidebar-section playlist-section" data-section="playlists">
@@ -34,7 +31,6 @@
           <button type="button" class="section-toggle" data-toggle="playlists" aria-expanded="true">
             <span class="section-toggle-label"><span class="section-chevron">▾</span> PLAYLISTS</span>
           </button>
-          <button id="deleteAllPlaylists" class="icon-button bulk-delete-button" title="Xóa hết playlist" aria-label="Xóa hết playlist">×</button>
           <button id="createPlaylist" class="icon-button" title="Tạo playlist">+</button>
         </div>
         <div id="playlistList" class="playlist-list section-body"></div>
@@ -71,7 +67,7 @@
       </div>
 
       <section class="content-section">
-        <div class="section-toolbar"><div><h2 id="sectionTitle">Tất cả bài hát</h2></div><div class="collection-actions"><button id="playAllButton" class="primary-button" type="button"><span>▶</span> Phát tất cả</button><button id="shuffleAllButton" class="secondary-button" type="button"><span>⤨</span> Phát ngẫu nhiên</button><button id="repeatPlaylistButton" class="secondary-button" type="button" hidden>↻ Lặp playlist</button><button id="addTracksButton" class="secondary-button" type="button" hidden><span>+</span> Thêm bài hát</button><label class="sort-select"><span>Sắp xếp:</span><select id="sortSelect"><option value="recent">Mới thêm</option><option value="title">Tên bài hát</option><option value="artist">Nghệ sĩ</option></select></label></div></div>
+        <div class="section-toolbar"><div><h2 id="sectionTitle">Tất cả bài hát</h2></div><div class="collection-actions"><button id="playAllButton" class="primary-button" type="button"><span>▶</span> Phát tất cả</button><button id="shuffleAllButton" class="secondary-button" type="button"><span>⤨</span> Phát ngẫu nhiên</button><button id="repeatPlaylistButton" class="secondary-button" type="button" hidden>↻ Lặp playlist</button><button id="addTracksButton" class="secondary-button" type="button" hidden><span>+</span> Thêm bài hát</button><button id="clearCurrentCollectionButton" class="secondary-button clear-collection-button" type="button" hidden><span>×</span> Xóa hết bài</button><label class="sort-select"><span>Sắp xếp:</span><select id="sortSelect"><option value="recent">Mới thêm</option><option value="title">Tên bài hát</option><option value="artist">Nghệ sĩ</option></select></label></div></div>
         <div id="stats" class="stats-line"></div>
         <div id="trackList" class="track-list" aria-live="polite"></div>
         <div id="emptyState" class="empty-state" hidden><div class="empty-icon">♫</div><h3>Chưa có bài hát phù hợp</h3><p>Thử đổi từ khóa hoặc tải lên một thư mục nhạc.</p></div>
