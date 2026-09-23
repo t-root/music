@@ -4,6 +4,7 @@ on:
   push:
     branches: ["main"]
     paths-ignore:
+      - 'app/**'
       - 'J97/**'
       - 'Karik/**'
       - 'Thanh Hưng/**'
