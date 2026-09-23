@@ -111,6 +111,8 @@ div { background: transparent; }
 }
 .artist-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .artist-actions { display: flex; gap: 3px; margin-left: auto; }
+.playlist-item .artist-actions { margin-left: auto; }
+.sidebar .artist-actions { display: none; }
 .artist-actions i { display: grid; place-items: center; width: 22px; height: 22px; color: var(--muted); border: 1px solid transparent; font-style: normal; font-size: 13px; }
 .artist-actions i:hover { color: var(--coral); border-color: var(--coral); }
 .section-heading { color: var(--muted); border-bottom: 1px solid var(--line); }
@@ -217,7 +219,7 @@ div { background: transparent; }
 .upload-folder-select option { color: var(--ink); background: #080b0e; }
 .upload-dialog-actions { margin-top: 8px; }
 .upload-dialog-actions button { height: 48px; }
-.read-only .upload-actions, .read-only #createArtist, .read-only #createPlaylist, .read-only #clearCurrentCollectionButton, .read-only #addTracksButton, .read-only #favoriteButton, .read-only .playlist-delete, .read-only .artist-actions, .read-only .row-actions .row-button:not(.play-row) { display: none !important; }
+.read-only .upload-actions, .read-only #createArtist, .read-only #createPlaylist, .read-only .collection-manage-button, .read-only #addTracksButton, .read-only #favoriteButton, .read-only .playlist-delete, .read-only .artist-actions, .read-only .row-actions .row-button:not(.play-row) { display: none !important; }
 
 /* Keep row actions and repeat states from colliding. */
 .main-content { padding-bottom: 190px; }
@@ -265,6 +267,7 @@ div { background: transparent; }
 .collection-actions .primary-button, .collection-actions .secondary-button { padding: 8px 11px; font-size: 11px; }
 .collection-actions .secondary-button { color: var(--ink); border: 1px solid var(--line); background: transparent; }
 .collection-actions .secondary-button:hover { color: var(--coral); border-color: var(--coral); }
+.collection-manage-button { white-space: nowrap; }
 .queue-total { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
 .queue-item.is-current { border-bottom-color: var(--coral); background: rgba(142, 240, 209, .08); box-shadow: inset 3px 0 0 var(--coral); }
 .queue-item.is-current strong, .queue-item.is-current .queue-item-play { color: var(--coral); }
@@ -351,6 +354,9 @@ div { background: transparent; }
 }
 
 @media (max-width: 640px) {
+  .collection-manage-button {
+    display: none !important;
+  }
   .sidebar {
     position: relative;
     display: flex;
@@ -391,8 +397,11 @@ div { background: transparent; }
     border-color: var(--coral) !important;
     background: rgba(142, 240, 209, .1) !important;
   }
-  .artist-actions, .playlist-delete {
-    display: none !important;
+  .artist-actions {
+    display: flex !important;
+  }
+  .playlist-item .playlist-delete {
+    display: grid !important;
   }
   .sidebar-footer {
     position: absolute;

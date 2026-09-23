@@ -862,18 +862,24 @@ function viewName() {
 function renderAll() { renderPlaylists(); renderTracks(); renderQueue(); updatePlayer(); const addTracksButton = document.querySelector('#addTracksButton'); if (addTracksButton) addTracksButton.hidden = view.type !== 'playlist'; updatePlaylistRepeatButton(); updateClearCurrentCollectionButton(); }
 function updateClearCurrentCollectionButton() {
   const button = document.querySelector('#clearCurrentCollectionButton');
-  if (!button) return;
+  const renameButton = document.querySelector('#renameCurrentCollectionButton');
+  if (!button || !renameButton) return;
   const playlist = view.type === 'playlist' ? state.playlists.find(item => item.id === view.value) : null;
   const tracks = view.type === 'folder' ? artistTracks(view.value) : playlist?.trackIds || [];
   const inCollection = view.type === 'folder' || view.type === 'playlist';
+  const label = view.type === 'folder' ? 'nghệ sĩ' : 'playlist';
+  renameButton.hidden = !inCollection;
+  renameButton.disabled = !canWrite || (view.type === 'playlist' ? !playlist : !tracks.length);
+  renameButton.title = `Đổi tên ${label} này`;
+  renameButton.innerHTML = `<span>✎</span> Đổi tên ${label}`;
   button.hidden = !inCollection;
   button.disabled = !canWrite || (view.type === 'playlist' ? !playlist : !tracks.length);
-  button.title = view.type === 'folder' ? 'Xóa nghệ sĩ này' : 'Xóa playlist này';
-  button.innerHTML = `<span>×</span> Xóa ${view.type === 'folder' ? 'nghệ sĩ' : 'playlist'}`;
+  button.title = `Xóa ${label} này`;
+  button.innerHTML = `<span>×</span> Xóa ${label}`;
 }
 function renderPlaylists() {
   const folders = artists().map(artist => `<button class="playlist-item artist-item ${view.type === 'folder' && view.value === artist ? 'active' : ''}" data-folder="${esc(artist)}"><span>▱</span><span class="artist-name">${esc(artist)}</span><span class="artist-actions"><i data-edit-artist="${esc(artist)}" title="Đổi tên nghệ sĩ">✎</i><i data-delete-artist="${esc(artist)}" title="Xóa nghệ sĩ">×</i></span></button>`).join('');
-  const custom = state.playlists.map(item => `<button class="playlist-item ${view.type === 'playlist' && view.value === item.id ? 'active' : ''}" data-playlist="${esc(item.id)}"><span>▤</span><span>${esc(item.name)}</span><i class="playlist-delete" data-delete-playlist="${esc(item.id)}" title="Xóa playlist">×</i></button>`).join('');
+  const custom = state.playlists.map(item => `<button class="playlist-item ${view.type === 'playlist' && view.value === item.id ? 'active' : ''}" data-playlist="${esc(item.id)}"><span>▤</span><span>${esc(item.name)}</span><span class="artist-actions"><i data-edit-playlist="${esc(item.id)}" title="Đổi tên playlist">✎</i><i class="playlist-delete" data-delete-playlist="${esc(item.id)}" title="Xóa playlist">×</i></span></button>`).join('');
   els.artistList.innerHTML = folders || '<p class="sidebar-note">Chưa có nghệ sĩ</p>';
   els.playlistList.innerHTML = custom || '<p class="sidebar-note">Chưa có playlist</p>';
 }
@@ -1086,11 +1092,12 @@ function moveQueue(direction) {
 
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { view = { type: button.dataset.view, value: '' }; document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item === button)); renderAll(); }));
 els.artistList.addEventListener('click', event => { const edit = event.target.closest('[data-edit-artist]'); if (edit) return openArtistDialog(edit.dataset.editArtist); const remove = event.target.closest('[data-delete-artist]'); if (remove) return deleteArtist(remove.dataset.deleteArtist); const folder = event.target.closest('[data-folder]'); if (!folder) return; view = { type: 'folder', value: folder.dataset.folder }; document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); renderAll(); });
-els.playlistList.addEventListener('click', event => { const deleteId = event.target.dataset.deletePlaylist; if (deleteId) return deletePlaylist(deleteId); const playlist = event.target.closest('[data-playlist]'); if (playlist) { view = { type: 'playlist', value: playlist.dataset.playlist }; document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); renderAll(); refreshPlaylistFromGitHub(playlist.dataset.playlist); } });
+els.playlistList.addEventListener('click', event => { const edit = event.target.closest('[data-edit-playlist]'); if (edit) return openPlaylistDialog('rename', edit.dataset.editPlaylist); const remove = event.target.closest('[data-delete-playlist]'); if (remove) return deletePlaylist(remove.dataset.deletePlaylist); const playlist = event.target.closest('[data-playlist]'); if (playlist) { view = { type: 'playlist', value: playlist.dataset.playlist }; document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active')); renderAll(); refreshPlaylistFromGitHub(playlist.dataset.playlist); } });
 els.trackList.addEventListener('click', event => { const row = event.target.closest('[data-track-id]'); if (!row) return; const id = row.dataset.trackId; const track = allTracks().find(item => item.id === id); if (event.target.closest('[data-play]')) { playbackSource = sourceForView(); return playTrack(track, getVisibleTracks()); } if (event.target.closest('[data-favorite]')) return toggleFavorite(id); if (event.target.closest('[data-add-queue]')) return addToQueue(id); if (event.target.closest('[data-add]')) return addToPlaylist(id); if (event.target.closest('[data-remove-from-playlist]')) return removeTrackFromPlaylist(id); if (event.target.closest('[data-delete]')) return deleteTrack(id); if (!event.target.closest('button')) { playbackSource = sourceForView(); playTrack(track, getVisibleTracks()); } });
 els.queueList.addEventListener('click', event => { const id = event.target.dataset.queuePlay; if (id) { const track = queue.find(item => item.id === id); if (track) playTrack(track); } });
 document.querySelector('#createPlaylist').addEventListener('click', createPlaylist);
 document.querySelector('#createArtist').addEventListener('click', openCreateArtistDialog);
+document.querySelector('#renameCurrentCollectionButton').addEventListener('click', () => { if (view.type === 'folder') openArtistDialog(view.value); if (view.type === 'playlist') openPlaylistDialog('rename', view.value); });
 document.querySelector('#clearCurrentCollectionButton').addEventListener('click', clearCurrentCollection);
 document.querySelector('#fileInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#artistFileInput').addEventListener('change', event => { const artistName = pendingArtistUpload; pendingArtistUpload = ''; uploadFiles(event.target.files, artistName); event.target.value = ''; });
@@ -1201,15 +1208,19 @@ function openPlaylistDialog(mode, trackId = '') {
   const select = document.querySelector('#playlistSelect');
   const nameInput = document.querySelector('#playlistNameInput');
   const createMode = mode === 'create';
-  document.querySelector('#playlistDialogTitle').textContent = createMode ? 'Tạo playlist' : 'Thêm vào playlist';
-  document.querySelector('#playlistCreateFields').hidden = !createMode;
-  document.querySelector('#playlistSelectFields').hidden = createMode;
-  nameInput.value = '';
+  const renameMode = mode === 'rename';
+  const playlist = renameMode ? state.playlists.find(item => item.id === trackId) : null;
+  if (renameMode && !playlist) return showToast('Không tìm thấy playlist.');
+  document.querySelector('#playlistDialogTitle').textContent = createMode ? 'Tạo playlist' : renameMode ? 'Đổi tên playlist' : 'Thêm vào playlist';
+  document.querySelector('#playlistCreateFields').hidden = !createMode && !renameMode;
+  document.querySelector('#playlistSelectFields').hidden = createMode || renameMode;
+  document.querySelector('#savePlaylist').textContent = renameMode ? 'Đổi tên' : createMode ? 'Tạo' : 'Lưu';
+  nameInput.value = playlist?.name || '';
   select.replaceChildren(...state.playlists.map(item => new Option(item.name, item.id)));
   dialog.dataset.mode = mode;
   dialog.dataset.trackId = trackId;
   dialog.showModal();
-  (createMode ? nameInput : select).focus();
+  (createMode || renameMode ? nameInput : select).focus();
 }
 async function addToPlaylist(id) {
   if (!canWrite) return showToast('Chế độ chỉ nghe.');
@@ -1231,6 +1242,24 @@ async function savePlaylistDialog() {
     if (state.playlists.some(item => item.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return showToast('Playlist này đã tồn tại.');
     playlist = { id: `playlist:${Date.now()}`, name: cleanName, trackIds: trackId ? [trackId] : [], synced: false };
     state.playlists.push(playlist);
+  } else if (mode === 'rename') {
+    const cleanName = document.querySelector('#playlistNameInput').value.trim();
+    playlist = state.playlists.find(item => item.id === trackId);
+    if (!playlist) return showToast('Không tìm thấy playlist.');
+    if (!cleanName) return showToast('Nhập tên playlist.');
+    if (cleanName.toLocaleLowerCase() === playlist.name.toLocaleLowerCase()) return dialog.close();
+    if (state.playlists.some(item => item.id !== playlist.id && item.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return showToast('Playlist này đã tồn tại.');
+    const oldName = playlist.name;
+    playlist.name = cleanName;
+    playlist.synced = false;
+    dialog.close();
+    saveState();
+    renderAll();
+    try {
+      await renameRemotePlaylist(playlist, oldName);
+      showToast(`Đã đổi tên playlist thành “${playlist.name}”.`);
+    } catch (error) { showToast(`Đã đổi tên cục bộ: ${error.message}`); }
+    return;
   } else {
     playlist = state.playlists.find(item => item.id === document.querySelector('#playlistSelect').value);
     if (!playlist) return showToast('Chưa có playlist để chọn.');
@@ -1245,6 +1274,36 @@ async function savePlaylistDialog() {
     await syncPlaylistToGitHub(playlist);
     showToast(mode === 'create' ? `Đã tạo playlist “${playlist.name}”.` : `Đã thêm bài hát vào ${playlist.name}.`);
   } catch (error) { showToast(`Đã lưu playlist cục bộ: ${error.message}`); }
+}
+async function renameRemotePlaylist(playlist, oldName) {
+  const token = getGitHubToken();
+  if (!token) throw new Error('Chưa cấu hình quyền GitHub để đổi tên playlist.');
+  if (!githubRepo) throw new Error('Không xác định được repository GitHub.');
+  const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' };
+  const safeOldName = oldName.replace(/[<>:"/\\|?*]/g, '-').trim();
+  const safeNewName = playlist.name.replace(/[<>:"/\\|?*]/g, '-').trim();
+  const oldPath = `playlist/${safeOldName}/playlist.json`;
+  const newPath = `playlist/${safeNewName}/playlist.json`;
+  if (oldPath === newPath) return syncPlaylistToGitHub(playlist);
+  const endpointFor = path => `https://api.github.com/repos/${githubRepo.owner}/${githubRepo.name}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+  const oldEndpoint = endpointFor(oldPath);
+  const newEndpoint = endpointFor(newPath);
+  const oldResponse = await fetch(`${oldEndpoint}?ref=${encodeURIComponent(githubBranch)}`, { headers });
+  let oldSha;
+  if (oldResponse.ok) oldSha = (await oldResponse.json()).sha;
+  else if (oldResponse.status !== 404) throw new Error('Không đọc được playlist cũ trên GitHub.');
+  const newResponse = await fetch(`${newEndpoint}?ref=${encodeURIComponent(githubBranch)}`, { headers });
+  if (newResponse.ok) throw new Error('Tên playlist mới đã tồn tại trên GitHub.');
+  if (newResponse.status !== 404) throw new Error('Không kiểm tra được playlist mới trên GitHub.');
+  const content = JSON.stringify({ name: playlist.name, tracks: playlist.trackIds.map(id => allTracks().find(track => track.id === id)?.path).filter(Boolean) }, null, 2);
+  const putResponse = await fetch(newEndpoint, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: `Rename playlist: ${oldName} to ${playlist.name}`, content: base64FromBytes(new TextEncoder().encode(content)), branch: githubBranch }) });
+  if (!putResponse.ok) throw new Error('GitHub từ chối tạo playlist mới.');
+  if (oldSha) {
+    const deleteResponse = await fetch(oldEndpoint, { method: 'DELETE', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: `Rename playlist: ${oldName} to ${playlist.name}`, sha: oldSha, branch: githubBranch }) });
+    if (!deleteResponse.ok) throw new Error('Đã tạo playlist mới nhưng chưa xóa playlist cũ.');
+  }
+  playlist.synced = true;
+  saveState();
 }
 async function deleteRemotePlaylist(playlist) {
   const token = getGitHubToken();
