@@ -872,7 +872,7 @@ function updateClearCurrentCollectionButton() {
 }
 function renderPlaylists() {
   const folders = artists().map(artist => `<button class="playlist-item artist-item ${view.type === 'folder' && view.value === artist ? 'active' : ''}" data-folder="${esc(artist)}"><span>▱</span><span class="artist-name">${esc(artist)}</span><span class="artist-actions"><i data-edit-artist="${esc(artist)}" title="Đổi tên nghệ sĩ">✎</i><i data-delete-artist="${esc(artist)}" title="Xóa nghệ sĩ">×</i></span></button>`).join('');
-  const custom = state.playlists.map(item => `<button class="playlist-item ${view.type === 'playlist' && view.value === item.id ? 'active' : ''}" data-playlist="${esc(item.id)}"><span>♡</span><span>${esc(item.name)}</span><i class="playlist-delete" data-delete-playlist="${esc(item.id)}" title="Xóa playlist">×</i></button>`).join('');
+  const custom = state.playlists.map(item => `<button class="playlist-item ${view.type === 'playlist' && view.value === item.id ? 'active' : ''}" data-playlist="${esc(item.id)}"><span>▤</span><span>${esc(item.name)}</span><i class="playlist-delete" data-delete-playlist="${esc(item.id)}" title="Xóa playlist">×</i></button>`).join('');
   els.artistList.innerHTML = folders || '<p class="sidebar-note">Chưa có nghệ sĩ</p>';
   els.playlistList.innerHTML = custom || '<p class="sidebar-note">Chưa có playlist</p>';
 }
