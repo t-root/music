@@ -4,11 +4,12 @@
 // visualizer/player-bar nằm trong ListHeaderComponent của FlatList; track-list
 // (`data`) là phần duy nhất thật sự "danh sách dài" bên dưới.
 import React from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { useStore } from '@/state/store';
 import { TrackRow } from '@/components/TrackRow';
 import { EmptyState } from '@/components/EmptyState';
@@ -19,6 +20,17 @@ import { AddTracksSheet } from '@/components/AddTracksSheet';
 import { colors, fonts, radius, spacing } from '@/theme';
 import { durationLabel } from '@/utils/time';
 import type { View as ViewState } from '@/types';
+
+const AUDIO_EXTENSION = /\.(mp3|wav|m4a|ogg|flac|aac)$/i;
+
+// SAF (Storage Access Framework) URI dạng content://.../tree/primary%3AMusic%2FBray hoặc
+// .../document/primary%3AMusic%2FBray%2FSong.mp3 — sau khi decode, tên thư mục/file luôn
+// là đoạn cuối cùng sau dấu "/".
+function nameFromSafUri(uri: string): string {
+  const decoded = decodeURIComponent(uri);
+  const segments = decoded.split('/');
+  return segments[segments.length - 1] || decoded;
+}
 
 function titleFor(view: ViewState, playlistName?: string) {
   if (view.type === 'folder') return view.value;
@@ -111,10 +123,8 @@ export function HomeScreen() {
     setRenamingCollection(false);
   };
 
-  // Tương đương #fileInput / #folderUploadButton + #uploadDialog trong index.html gốc:
-  // 2 nút tải nhạc luôn hỏi "Chọn nghệ sĩ" trừ khi đang mở sẵn đúng 1 nghệ sĩ. RN không
-  // có picker chọn cả thư mục như web (webkitdirectory) nên cả 2 nút cùng mở
-  // DocumentPicker chọn nhiều file — chỉ khác icon để giữ đúng bố cục nút của bản gốc.
+  // Tương đương #fileInput trong index.html gốc: tải TỪNG FILE riêng lẻ, luôn hỏi
+  // "Chọn nghệ sĩ" (trừ khi đang mở sẵn đúng 1 nghệ sĩ).
   const [artistPickerResolve, setArtistPickerResolve] = React.useState<((name: string) => void) | null>(null);
   const chooseUploadArtist = (): Promise<string> => {
     if (view.type === 'folder') return Promise.resolve(view.value);
@@ -133,6 +143,29 @@ export function HomeScreen() {
     uploadLocalFiles(files, artistName);
   };
 
+  // Tương đương #folderUploadButton trong app.js gốc: chọn CẢ MỘT THƯ MỤC, tự suy ra
+  // tên nghệ sĩ từ tên thư mục (isFolderUpload → không hỏi lại "Chọn nghệ sĩ"). RN dùng
+  // Storage Access Framework của Android (expo-file-system) để mở picker chọn thư mục —
+  // chỉ chạy trên Android vì SAF không tồn tại trên iOS.
+  const pickAndUploadFolder = async () => {
+    if (Platform.OS !== 'android') {
+      showToast('Tải thư mục chỉ hỗ trợ trên Android.');
+      return;
+    }
+    const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+    if (!permission.granted) return;
+    const artistName = nameFromSafUri(permission.directoryUri);
+    const entries = await FileSystem.StorageAccessFramework.readDirectoryAsync(permission.directoryUri);
+    const files = entries
+      .map((uri) => ({ uri, name: nameFromSafUri(uri) }))
+      .filter((file) => AUDIO_EXTENSION.test(file.name));
+    if (!files.length) {
+      showToast('Thư mục không có file nhạc hợp lệ.');
+      return;
+    }
+    uploadLocalFiles(files, artistName);
+  };
+
   const openArtist = (name: string) => setView({ type: 'folder', value: name });
   const openPlaylist = (id: string) => {
     setView({ type: 'playlist', value: id });
@@ -147,7 +180,7 @@ export function HomeScreen() {
           <Pressable hitSlop={8} style={styles.iconButtonFile} onPress={pickAndUploadTracks}>
             <Text style={styles.iconButtonText}>♪</Text>
           </Pressable>
-          <Pressable hitSlop={8} style={styles.iconButtonFolder} onPress={pickAndUploadTracks}>
+          <Pressable hitSlop={8} style={styles.iconButtonFolder} onPress={pickAndUploadFolder}>
             <Text style={styles.iconButtonText}>▣</Text>
           </Pressable>
         </View>

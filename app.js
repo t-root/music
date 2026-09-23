@@ -98,6 +98,8 @@ const els = {
   favorite: document.querySelector('#favoriteButton'), toast: document.querySelector('#toast')
 };
 const stateKey = 'giai-dieu-state-v1';
+const themeColorKey = 'giai-dieu-theme-color-v1';
+const defaultThemeColor = '#8ef0d1';
 const audioExtensions = new Set(['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac']);
 const colors = ['coral', 'blue', 'gold'];
 let seedTracks = [];
@@ -137,6 +139,59 @@ function readState() {
   catch { return { hidden: [], favorites: [], recent: [], playlists: [] }; }
 }
 function saveState() { localStorage.setItem(stateKey, JSON.stringify(state)); }
+function normalizeThemeColor(value) {
+  const raw = String(value || '').trim().replace(/^#/, '');
+  if (!/^(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) return '';
+  const expanded = raw.length === 3 ? raw.split('').map(char => char + char).join('') : raw;
+  return `#${expanded.toLowerCase()}`;
+}
+function themeColorRgb(color) {
+  const hex = color.slice(1);
+  return `${parseInt(hex.slice(0, 2), 16)}, ${parseInt(hex.slice(2, 4), 16)}, ${parseInt(hex.slice(4, 6), 16)}`;
+}
+function accentRgba(alpha) {
+  const rgb = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || '142, 240, 209';
+  return `rgba(${rgb}, ${alpha})`;
+}
+function applyThemeColor(color, persist = true) {
+  const normalized = normalizeThemeColor(color) || defaultThemeColor;
+  const root = document.documentElement;
+  root.style.setProperty('--coral', normalized);
+  root.style.setProperty('--blue', normalized);
+  root.style.setProperty('--peach', normalized);
+  root.style.setProperty('--accent-rgb', themeColorRgb(normalized));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', normalized);
+  if (persist) localStorage.setItem(themeColorKey, normalized);
+  return normalized;
+}
+applyThemeColor(localStorage.getItem(themeColorKey) || defaultThemeColor, false);
+async function syncThemeColorToGitHub(color) {
+  if (!canWrite) throw new Error('Mở quyền chỉnh sửa để lưu màu lên GitHub.');
+  if (!githubRepo) throw new Error('Chưa kết nối được repository GitHub.');
+  const tokenValue = getGitHubToken();
+  if (!tokenValue) throw new Error('Chưa cấu hình quyền GitHub để lưu màu.');
+  const path = 'theme.json';
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  const endpoint = `https://api.github.com/repos/${githubRepo.owner}/${githubRepo.name}/contents/${encodedPath}`;
+  const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${tokenValue}`, 'X-GitHub-Api-Version': '2022-11-28' };
+  const existing = await fetch(`${endpoint}?ref=${encodeURIComponent(githubBranch)}`, { headers });
+  let sha;
+  if (existing.ok) sha = (await existing.json()).sha;
+  else if (existing.status !== 404) throw new Error('Không đọc được cấu hình màu trên GitHub.');
+  const content = JSON.stringify({ color }, null, 2);
+  const body = { message: `Update theme color: ${color}`, content: base64FromBytes(new TextEncoder().encode(content)), branch: githubBranch };
+  if (sha) body.sha = sha;
+  const response = await fetch(endpoint, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!response.ok) throw new Error('GitHub từ chối lưu màu chủ đạo.');
+}
+async function saveThemeColor(color) {
+  try {
+    await syncThemeColorToGitHub(color);
+    showToast(`Đã lưu màu ${color} lên GitHub.`);
+  } catch (error) {
+    showToast(`Đã lưu màu trên thiết bị: ${error.message}`);
+  }
+}
 
 /* ============================================================
    THÔNG BÁO KHI PHÁT NỀN: nút Trước / Phát-Dừng / Tiếp + nút Lưu bài
@@ -307,8 +362,6 @@ function drawVisualizer() {
   const dt = Math.min(0.05, Math.max(0.001, t - (vizPrevT || t - 0.016)));
   vizPrevT = t;
   const TAU = Math.PI * 2;
-  const hsla = (h, s, l, a) => `hsla(${h}, ${s}%, ${l}%, ${Math.max(0, Math.min(1, a))})`;
-
   // ---------- phân tích âm thanh ----------
   let bass = 0.08, mid = 0.08, treble = 0.06, total = 0.1;
   if (analyser) {
@@ -352,16 +405,16 @@ function drawVisualizer() {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(6, 9, 12, 0.35)';
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(142, 240, 209, 0.035)';
+  ctx.fillStyle = accentRgba(0.035);
   for (let y = 12; y < H; y += 22) {
     for (let x = 12 + ((y / 22) % 2) * 11; x < W; x += 22) ctx.fillRect(x, y, 1.1, 1.1);
   }
 
   // vầng sáng đối xứng (nhấp nháy theo nhịp)
   const glowGrad = ctx.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 2.7);
-  glowGrad.addColorStop(0, `rgba(142, 240, 209, ${0.06 + p * 0.1 + flash * 0.06})`);
-  glowGrad.addColorStop(0.5, `rgba(90, 200, 230, ${0.02 + p * 0.035})`);
-  glowGrad.addColorStop(1, 'rgba(142, 240, 209, 0)');
+  glowGrad.addColorStop(0, accentRgba(0.06 + p * 0.1 + flash * 0.06));
+  glowGrad.addColorStop(0.5, accentRgba(0.02 + p * 0.035));
+  glowGrad.addColorStop(1, accentRgba(0));
   ctx.fillStyle = glowGrad;
   ctx.beginPath(); ctx.arc(cx, cy, R * 2.7, 0, TAU); ctx.fill();
 
@@ -373,7 +426,7 @@ function drawVisualizer() {
     const mm = k / (floorBars / 2);
     const v = frequencyData ? frequencyData[Math.floor(Math.pow(mm, 0.9) * frequencyData.length * 0.6)] / 255 : 0.04;
     const h = 3 + v * H * 0.08;
-    ctx.fillStyle = hsla(158 + mm * 34, 70, 65, 0.05 + v * 0.22);
+    ctx.fillStyle = accentRgba(0.05 + v * 0.22);
     ctx.fillRect(i * fbw + 1, floorY - h, Math.max(1, fbw - 2), h);
   }
 
@@ -381,7 +434,7 @@ function drawVisualizer() {
   for (let i = 0; i < 240; i++) {
     const a = (i / 240) * TAU + vizSpin * 0.04;
     const r1 = R * 2.3, r2 = r1 + (i % 5 === 0 ? 6 : 3);
-    ctx.strokeStyle = `rgba(142, 240, 209, ${i % 5 === 0 ? 0.22 : 0.09})`;
+    ctx.strokeStyle = accentRgba(i % 5 === 0 ? 0.22 : 0.09);
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
@@ -394,7 +447,7 @@ function drawVisualizer() {
     const a0 = vizSpin * dir * 0.7 + i * 2.1;
     ctx.beginPath();
     ctx.arc(cx, cy, R * sc, a0, a0 + len * (0.5 + treble * 1.1));
-    ctx.strokeStyle = `rgba(190, 255, 235, ${0.15 + treble * 0.28})`;
+    ctx.strokeStyle = accentRgba(0.15 + treble * 0.28);
     ctx.lineWidth = 1.6;
     ctx.stroke();
   });
@@ -431,11 +484,10 @@ function drawVisualizer() {
     const am = (a0 + a1) / 2;
     const val = vals[i];
     const outer = inner + 4 + val * maxLen;
-    const hue = 158 + m * 34;
     const bright = Math.min(1, val * 1.1);
     const grad = ctx.createLinearGradient(cx + Math.cos(am) * inner, cy + Math.sin(am) * inner, cx + Math.cos(am) * outer, cy + Math.sin(am) * outer);
-    grad.addColorStop(0, hsla(hue, 55, 40, 0.25 + bright * 0.35));
-    grad.addColorStop(1, hsla(hue, 90, 80 + flash * 8, 0.35 + bright * 0.6));
+    grad.addColorStop(0, accentRgba(0.25 + bright * 0.35));
+    grad.addColorStop(1, accentRgba(0.35 + bright * 0.6));
     ctx.beginPath();
     ctx.arc(cx, cy, outer, a0, a1);
     ctx.arc(cx, cy, inner, a1, a0, true);
@@ -448,12 +500,12 @@ function drawVisualizer() {
     ctx.arc(cx, cy, inner - 3, a0, a1);
     ctx.arc(cx, cy, refl, a1, a0, true);
     ctx.closePath();
-    ctx.fillStyle = hsla(hue, 80, 65, 0.06 + val * 0.2);
+    ctx.fillStyle = accentRgba(0.06 + val * 0.2);
     ctx.fill();
     // chấm đỉnh rơi dần
     visualizerPeaks[i] = Math.max(val, visualizerPeaks[i] - 0.028);  // rơi nhanh hơn
     const pr = inner + 8 + visualizerPeaks[i] * maxLen;
-    ctx.fillStyle = `rgba(220, 255, 245, ${0.35 + visualizerPeaks[i] * 0.55})`;
+    ctx.fillStyle = accentRgba(0.35 + visualizerPeaks[i] * 0.55);
     ctx.fillRect(cx + Math.cos(am) * pr - 1.5, cy + Math.sin(am) * pr - 1.5, 3, 3);
     tips.push([cx + Math.cos(am) * (outer + 3), cy + Math.sin(am) * (outer + 3)]);
   }
@@ -466,9 +518,9 @@ function drawVisualizer() {
     if (i === 0) ctx.moveTo(mx, my); else ctx.quadraticCurveTo(a[0], a[1], mx, my);
   }
   ctx.closePath();
-  ctx.shadowColor = 'rgba(142, 240, 209, 0.9)';
+  ctx.shadowColor = accentRgba(0.9);
   ctx.shadowBlur = 10 + flash * 10;
-  ctx.strokeStyle = `rgba(200, 255, 240, ${0.35 + p * 0.4})`;
+  ctx.strokeStyle = accentRgba(0.35 + p * 0.4);
   ctx.lineWidth = 1.2;
   ctx.stroke();
   ctx.shadowBlur = 0;
@@ -487,7 +539,7 @@ function drawVisualizer() {
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.strokeStyle = `rgba(160, 255, 230, ${0.4 + p * 0.4})`;
+  ctx.strokeStyle = accentRgba(0.4 + p * 0.4);
   ctx.lineWidth = 1.1;
   ctx.stroke();
 
@@ -495,7 +547,7 @@ function drawVisualizer() {
   [0.22, 0.38, 0.54, 0.70, 0.88, 1.08].forEach((scale, i) => {
     ctx.beginPath();
     ctx.arc(cx, cy, R * scale + p * 2.5, 0, TAU);
-    ctx.strokeStyle = `rgba(142, 240, 209, ${i === 3 ? 0.32 + g * 0.12 : 0.14 + g * 0.08})`;
+    ctx.strokeStyle = accentRgba(i === 3 ? 0.32 + g * 0.12 : 0.14 + g * 0.08);
     ctx.lineWidth = i === 3 ? 1.6 : (i % 2 === 0 ? 1.1 : 0.75);
     ctx.stroke();
   });
@@ -503,7 +555,7 @@ function drawVisualizer() {
   [1.55, 1.82, 2.08].forEach(scale => {
     ctx.beginPath();
     ctx.arc(cx, cy, R * scale + p * 2, 0, TAU);
-    ctx.strokeStyle = `rgba(142, 240, 209, ${0.07 + g * 0.05})`;
+    ctx.strokeStyle = accentRgba(0.07 + g * 0.05);
     ctx.lineWidth = 1;
     ctx.stroke();
   });
@@ -517,7 +569,7 @@ function drawVisualizer() {
     if (w.a <= 0 || w.r > R * 2.7) { vizShockwaves.splice(i, 1); continue; }
     ctx.beginPath();
     ctx.arc(cx, cy, w.r, 0, TAU);
-    ctx.strokeStyle = `rgba(190, 255, 240, ${w.a})`;
+    ctx.strokeStyle = accentRgba(w.a);
     ctx.lineWidth = 1 + w.a * 2.2;
     ctx.stroke();
   }
@@ -530,7 +582,7 @@ function drawVisualizer() {
       const x = cx + Math.cos(a) * radius, y = cy + Math.sin(a) * radius;
       if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
-    ctx.strokeStyle = `rgba(142, 240, 209, ${alpha})`;
+    ctx.strokeStyle = accentRgba(alpha);
     ctx.lineWidth = lineW;
     ctx.stroke();
   }
@@ -546,7 +598,7 @@ function drawVisualizer() {
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(a) * R * 0.3, cy + Math.sin(a) * R * 0.3);
     ctx.lineTo(cx + Math.cos(a) * (R * 0.3 + len * 0.6), cy + Math.sin(a) * (R * 0.3 + len * 0.6));
-    ctx.strokeStyle = `rgba(190, 255, 235, ${0.08 + treble * 0.4})`;
+    ctx.strokeStyle = accentRgba(0.08 + treble * 0.4);
     ctx.lineWidth = 0.9;
     ctx.stroke();
   }
@@ -555,33 +607,33 @@ function drawVisualizer() {
   const sweepA = t * 1.05;
   try {
     const sweepGrad = ctx.createConicGradient(sweepA, cx, cy);
-    sweepGrad.addColorStop(0, 'rgba(142, 240, 209, 0)');
-    sweepGrad.addColorStop(0.88, 'rgba(142, 240, 209, 0)');
-    sweepGrad.addColorStop(0.97, `rgba(142, 240, 209, ${0.1 + p * 0.14})`);
-    sweepGrad.addColorStop(1, 'rgba(142, 240, 209, 0)');
+    sweepGrad.addColorStop(0, accentRgba(0));
+    sweepGrad.addColorStop(0.88, accentRgba(0));
+    sweepGrad.addColorStop(0.97, accentRgba(0.1 + p * 0.14));
+    sweepGrad.addColorStop(1, accentRgba(0));
     ctx.fillStyle = sweepGrad;
     ctx.beginPath(); ctx.arc(cx, cy, R * 2.15, 0, TAU); ctx.fill();
   } catch (_) {}
 
   // ---------- lõi ----------
   const coreG = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.42);
-  coreG.addColorStop(0, `rgba(142, 240, 209, ${0.18 + p * 0.28 + flash * 0.2})`);
-  coreG.addColorStop(0.55, `rgba(142, 240, 209, ${0.05 + p * 0.08})`);
-  coreG.addColorStop(1, 'rgba(142, 240, 209, 0)');
+  coreG.addColorStop(0, accentRgba(0.18 + p * 0.28 + flash * 0.2));
+  coreG.addColorStop(0.55, accentRgba(0.05 + p * 0.08));
+  coreG.addColorStop(1, accentRgba(0));
   ctx.fillStyle = coreG;
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.42 + p * 2.5, 0, TAU); ctx.fill();
   ctx.beginPath();
   ctx.arc(cx, cy, R * 0.26 + p * 1.5, 0, TAU);
-  ctx.strokeStyle = `rgba(142, 240, 209, ${0.55 + g * 0.25})`;
+  ctx.strokeStyle = accentRgba(0.55 + g * 0.25);
   ctx.lineWidth = 1.8;
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(cx, cy, 3 + p * 1.8 + flash * 2, 0, TAU);
-  ctx.fillStyle = `rgba(210, 255, 245, ${0.75 + p * 0.25})`;
+  ctx.fillStyle = accentRgba(0.75 + p * 0.25);
   ctx.fill();
 
   const br = R * 0.48 + p * 2.5, bs = 9;
-  ctx.strokeStyle = `rgba(142, 240, 209, ${0.28 + g * 0.18})`;
+  ctx.strokeStyle = accentRgba(0.28 + g * 0.18);
   ctx.lineWidth = 1.2;
   [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
     ctx.beginPath();
@@ -597,13 +649,13 @@ function drawVisualizer() {
     const rr = R * sc + p * 2.5;
     for (let j = 0; j < 14; j++) {
       const aj = a - Math.sign(spd) * j * 0.05;
-      ctx.fillStyle = `rgba(190, 255, 235, ${(1 - j / 14) * 0.55})`;
+      ctx.fillStyle = accentRgba((1 - j / 14) * 0.55);
       ctx.fillRect(cx + Math.cos(aj) * rr - 1, cy + Math.sin(aj) * rr - 1, 2, 2);
     }
     ctx.beginPath();
     ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 2.6 + p * 1.5, 0, TAU);
-    ctx.fillStyle = 'rgba(230, 255, 250, 0.95)';
-    ctx.shadowColor = 'rgba(142, 240, 209, 1)'; ctx.shadowBlur = 8;
+    ctx.fillStyle = accentRgba(0.95);
+    ctx.shadowColor = accentRgba(1); ctx.shadowBlur = 8;
     ctx.fill();
     ctx.shadowBlur = 0;
   });
@@ -614,7 +666,7 @@ function drawVisualizer() {
     const dist = R * (1.0 + pt.radius * 0.9) + Math.sin(t * 1.6 + pt.phase) * (2 + p * 6);
     const x = cx + Math.cos(ang) * dist, y = cy + Math.sin(ang) * dist;
     const alpha = 0.12 + Math.max(0, Math.sin(t * 2 + pt.phase)) * 0.45 + total * 0.28 + vol * 0.12;
-    ctx.fillStyle = `rgba(142, 240, 209, ${Math.min(0.9, alpha)})`;
+    ctx.fillStyle = accentRgba(Math.min(0.9, alpha));
     if (pt.type === 'diamond') {
       ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
       ctx.fillRect(-pt.size / 2, -pt.size / 2, pt.size, pt.size);
@@ -630,7 +682,7 @@ function drawVisualizer() {
     b.dist += b.v * dt;
     b.life -= dt * 0.9;
     if (b.life <= 0) { vizBursts.splice(i, 1); continue; }
-    ctx.fillStyle = `rgba(220, 255, 245, ${b.life * 0.85})`;
+    ctx.fillStyle = accentRgba(b.life * 0.85);
     ctx.fillRect(cx + Math.cos(b.ang) * b.dist, cy + Math.sin(b.ang) * b.dist, b.size, b.size);
   }
 
@@ -640,7 +692,7 @@ function drawVisualizer() {
     const bin = frequencyData ? frequencyData[Math.floor(i * frequencyData.length * 0.6 / sideBins)] / 255 : 0.05;
     const len = 2 + Math.min(28, bin * 18);
     const y = cy - sideBins * 2.6 + i * 5.2;
-    ctx.fillStyle = hsla(158 + (i / sideBins) * 34, 80, 75, 0.14 + Math.min(1, bin * 1.4) * 0.7);
+    ctx.fillStyle = accentRgba(0.14 + Math.min(1, bin * 1.4) * 0.7);
     ctx.fillRect(14, y, len, 2.6);
     ctx.fillRect(W - 14 - len, y, len, 2.6);
   }
@@ -651,20 +703,20 @@ function drawVisualizer() {
   [['BASS', bass], ['MID', mid], ['HI', treble]].forEach(([label, v], i) => {
     const y = H - 62 + i * 12;
     const lv = Math.min(1, v * 1.35);
-    ctx.fillStyle = 'rgba(142, 240, 209, 0.6)';
+    ctx.fillStyle = accentRgba(0.6);
     ctx.textAlign = 'left';
     ctx.fillText(label, 16, y);
-    ctx.fillStyle = 'rgba(142, 240, 209, 0.12)';
+    ctx.fillStyle = accentRgba(0.12);
     ctx.fillRect(48, y - 2, 60, 4);
-    ctx.fillStyle = 'rgba(190, 255, 235, 0.85)';
+    ctx.fillStyle = accentRgba(0.85);
     ctx.fillRect(48, y - 2, 60 * lv, 4);
     // bên phải: gương của bên trái
     ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(142, 240, 209, 0.6)';
+    ctx.fillStyle = accentRgba(0.6);
     ctx.fillText(label, W - 16, y);
-    ctx.fillStyle = 'rgba(142, 240, 209, 0.12)';
+    ctx.fillStyle = accentRgba(0.12);
     ctx.fillRect(W - 108, y - 2, 60, 4);
-    ctx.fillStyle = 'rgba(190, 255, 235, 0.85)';
+    ctx.fillStyle = accentRgba(0.85);
     ctx.fillRect(W - 48 - 60 * lv, y - 2, 60 * lv, 4);
   });
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -679,11 +731,11 @@ function drawVisualizer() {
       const y = H * 0.9 + dir * (v - 0.5) * (8 + p * 22 + vol * 8) + (dir < 0 ? 6 : 0);
       if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
-    ctx.strokeStyle = `rgba(142, 240, 209, ${alpha})`;
+    ctx.strokeStyle = accentRgba(alpha);
     ctx.lineWidth = lw;
     ctx.stroke();
   });
-  ctx.strokeStyle = 'rgba(142, 240, 209, 0.07)';
+  ctx.strokeStyle = accentRgba(0.07);
   ctx.beginPath(); ctx.moveTo(0, H * 0.9); ctx.lineTo(W, H * 0.9); ctx.stroke();
 
   visualizerFrame = requestAnimationFrame(drawVisualizer);
@@ -796,6 +848,16 @@ async function loadLibrary() {
       throw new Error('GitHub API unavailable');
     }
     const tree = await treeResponse.json();
+    const remoteTheme = tree.tree.find(item => item.type === 'blob' && item.path === 'theme.json');
+    if (remoteTheme) {
+      try {
+        const encodedPath = remoteTheme.path.split('/').map(encodeURIComponent).join('/');
+        const themeResponse = await fetch(`https://raw.githubusercontent.com/${repo.owner}/${repo.name}/${repository.default_branch}/${encodedPath}?t=${Date.now()}`);
+        const theme = await themeResponse.json();
+        const remoteColor = normalizeThemeColor(theme.color);
+        if (remoteColor) applyThemeColor(remoteColor);
+      } catch { /* dùng màu đã lưu trên thiết bị nếu cấu hình GitHub không hợp lệ */ }
+    }
     seedTracks = tree.tree.filter(item => item.type === 'blob' && /^artist\/[^/]+\/.+$/i.test(item.path) && audioExtensions.has(getExtension(item.path))).map(item => {
       const parts = item.path.split('/');
       const artist = parts[0].toLowerCase() === 'artist' && parts.length > 2 ? parts[1] : (parts.length > 1 ? parts[0] : 'Nhạc gốc');
@@ -1160,6 +1222,28 @@ const accessQuestion = document.querySelector('#accessQuestion');
 const accessPassword = document.querySelector('#accessPassword');
 const accessPass = document.querySelector('#accessPass');
 const accessError = document.querySelector('#accessError');
+const themeColorDialog = document.querySelector('#themeColorDialog');
+const themeColorInput = document.querySelector('#themeColorInput');
+document.querySelector('#themeColorButton').addEventListener('click', () => {
+  themeColorInput.value = localStorage.getItem(themeColorKey) || defaultThemeColor;
+  themeColorDialog.showModal();
+  themeColorInput.focus();
+});
+document.querySelector('#cancelThemeColor').addEventListener('click', () => themeColorDialog.close());
+document.querySelector('#saveThemeColor').addEventListener('click', () => {
+  const color = normalizeThemeColor(themeColorInput.value);
+  if (!color) return showToast('Mã màu không hợp lệ. Dùng dạng #RRGGBB.');
+  applyThemeColor(color);
+  themeColorInput.value = color;
+  themeColorDialog.close();
+  saveThemeColor(color);
+});
+document.querySelector('#resetThemeColor').addEventListener('click', () => {
+  applyThemeColor(defaultThemeColor);
+  themeColorInput.value = defaultThemeColor;
+  saveThemeColor(defaultThemeColor);
+});
+themeColorInput.addEventListener('keydown', event => { if (event.key === 'Enter') document.querySelector('#saveThemeColor').click(); });
 document.querySelector('#accessNo').addEventListener('click', () => { setWriteAccess(false); accessDialog.close(); });
 document.querySelector('#accessYes').addEventListener('click', () => { accessQuestion.hidden = true; accessPassword.hidden = false; accessPass.focus(); });
 document.querySelector('#accessUnlock').addEventListener('click', () => {

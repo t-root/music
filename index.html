@@ -53,6 +53,7 @@
         <div class="breadcrumbs"><strong id="pageTitle">Tất cả bài hát</strong></div>
         <div class="top-actions">
           <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Tìm bài hát, nghệ sĩ..." aria-label="Tìm kiếm"></label>
+          <button id="themeColorButton" class="round-button color-button" title="Đổi màu chủ đạo" type="button">#</button>
           <button id="queueButton" class="round-button" title="Hàng đợi">≡</button>
         </div>
       </header>
@@ -144,6 +145,19 @@
       </div>
     </div>
   </dialog>
+  <dialog id="themeColorDialog" class="access-dialog theme-color-dialog">
+    <div class="access-card">
+      <p class="eyebrow">THEME COLOR</p>
+      <h2>Màu chủ đạo</h2>
+      <label class="access-label" for="themeColorInput">Nhập mã màu HEX</label>
+      <input id="themeColorInput" class="access-input theme-color-input" type="text" inputmode="text" maxlength="7" placeholder="#8ef0d1" autocomplete="off">
+      <div class="access-actions upload-dialog-actions">
+        <button id="resetThemeColor" class="secondary-button" type="button">Màu mặc định</button>
+        <button id="cancelThemeColor" class="secondary-button" type="button">Hủy</button>
+        <button id="saveThemeColor" class="primary-button" type="button">Áp dụng</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="createArtistDialog" class="access-dialog artist-dialog">
     <div class="access-card">
       <p class="eyebrow">ARTIST DIRECTORY</p>
@@ -188,7 +202,7 @@
       </div>
     </div>
   </dialog>
-  <script src="app.js?v=20260923-2"></script>
+  <script src="app.js?v=20260923-3"></script>
   <script>
   /* Replace native select popups with themed listboxes while keeping the original fields for app logic. */
   (function setupThemedSelects() {
