@@ -119,6 +119,7 @@ let canWrite = false;
 let state = readState();
 let toastTimer;
 let uploadFolderResolve = null;
+let pendingArtistUpload = '';
 const durationPromises = new Map();
 const audioSourceCache = new Map();
 const prefetchPromises = new Map();
@@ -1088,8 +1089,10 @@ els.playlistList.addEventListener('click', event => { const deleteId = event.tar
 els.trackList.addEventListener('click', event => { const row = event.target.closest('[data-track-id]'); if (!row) return; const id = row.dataset.trackId; const track = allTracks().find(item => item.id === id); if (event.target.closest('[data-play]')) { playbackSource = sourceForView(); return playTrack(track, getVisibleTracks()); } if (event.target.closest('[data-favorite]')) return toggleFavorite(id); if (event.target.closest('[data-add-queue]')) return addToQueue(id); if (event.target.closest('[data-add]')) return addToPlaylist(id); if (event.target.closest('[data-remove-from-playlist]')) return removeTrackFromPlaylist(id); if (event.target.closest('[data-delete]')) return deleteTrack(id); if (!event.target.closest('button')) { playbackSource = sourceForView(); playTrack(track, getVisibleTracks()); } });
 els.queueList.addEventListener('click', event => { const id = event.target.dataset.queuePlay; if (id) { const track = queue.find(item => item.id === id); if (track) playTrack(track); } });
 document.querySelector('#createPlaylist').addEventListener('click', createPlaylist);
+document.querySelector('#createArtist').addEventListener('click', openCreateArtistDialog);
 document.querySelector('#clearCurrentCollectionButton').addEventListener('click', clearCurrentCollection);
 document.querySelector('#fileInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
+document.querySelector('#artistFileInput').addEventListener('change', event => { const artistName = pendingArtistUpload; pendingArtistUpload = ''; uploadFiles(event.target.files, artistName); event.target.value = ''; });
 document.querySelector('#folderInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#folderUploadButton').addEventListener('click', chooseFolderUpload);
 document.querySelector('#cancelUpload').addEventListener('click', () => { document.querySelector('#uploadDialog').close(); uploadFolderResolve?.(''); uploadFolderResolve = null; });
@@ -1364,6 +1367,23 @@ document.querySelector('#createPlaylistFromAdd').addEventListener('click', () =>
 function githubPath(path) { return path.split('/').map(encodeURIComponent).join('/'); }
 function artistTracks(name) { return seedTracks.filter(track => track.artist === name); }
 function validArtistName(name) { return name && name !== '.' && name !== '..' && !/[\\/]/.test(name); }
+function openCreateArtistDialog() {
+  if (!canWrite) return showToast('Chế độ chỉ nghe.');
+  const dialog = document.querySelector('#createArtistDialog');
+  const input = document.querySelector('#createArtistNameInput');
+  input.value = '';
+  dialog.showModal();
+  input.focus();
+}
+function saveCreateArtist() {
+  const dialog = document.querySelector('#createArtistDialog');
+  const name = document.querySelector('#createArtistNameInput').value.trim();
+  if (!validArtistName(name)) return showToast('Tên nghệ sĩ không hợp lệ.');
+  if (artists().some(artist => artist.toLocaleLowerCase() === name.toLocaleLowerCase())) return showToast('Nghệ sĩ đã tồn tại.');
+  pendingArtistUpload = name;
+  dialog.close();
+  document.querySelector('#artistFileInput').click();
+}
 function openArtistDialog(name) {
   if (!canWrite) return showToast('Chế độ chỉ nghe.');
   const dialog = document.querySelector('#artistDialog');
@@ -1447,6 +1467,9 @@ function clearCurrentCollection() {
 document.querySelector('#cancelArtist').addEventListener('click', () => document.querySelector('#artistDialog').close());
 document.querySelector('#saveArtist').addEventListener('click', saveArtistName);
 document.querySelector('#artistNameInput').addEventListener('keydown', event => { if (event.key === 'Enter') saveArtistName(); });
+document.querySelector('#cancelCreateArtist').addEventListener('click', () => document.querySelector('#createArtistDialog').close());
+document.querySelector('#saveCreateArtist').addEventListener('click', saveCreateArtist);
+document.querySelector('#createArtistNameInput').addEventListener('keydown', event => { if (event.key === 'Enter') saveCreateArtist(); });
 function waitForPlaybackRetry(delay) { return new Promise(resolve => setTimeout(resolve, delay)); }
 function prefetchTrack(track) {
   if (!track?.src || audioSourceCache.has(track.id) || prefetchPromises.has(track.id) || !/^https?:/i.test(track.src)) return;

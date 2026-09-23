@@ -21,9 +21,12 @@
         <button class="nav-item" data-view="favorites"><span>♡</span> Yêu thích</button>
       </nav>
       <div class="sidebar-section" data-section="artists">
-        <button type="button" class="section-heading section-toggle" data-toggle="artists" aria-expanded="true">
-          <span class="section-toggle-label"><span class="section-chevron">▾</span> ARTISTS</span>
-        </button>
+        <div class="section-heading section-toggle-row">
+          <button type="button" class="section-toggle" data-toggle="artists" aria-expanded="true">
+            <span class="section-toggle-label"><span class="section-chevron">▾</span> ARTISTS</span>
+          </button>
+          <button id="createArtist" class="icon-button" title="Tạo nghệ sĩ" type="button">+</button>
+        </div>
         <div id="artistList" class="playlist-list section-body"></div>
       </div>
       <div class="sidebar-section playlist-section" data-section="playlists">
@@ -41,6 +44,7 @@
           <button id="folderUploadButton" class="upload-button" type="button" title="Tải thư mục"><span class="upload-icon upload-icon-folder">▣</span> Tải thư mục</button>
         </div>
         <input id="fileInput" type="file" multiple accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac">
+        <input id="artistFileInput" type="file" multiple accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac">
         <input id="folderInput" type="file" webkitdirectory directory multiple accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac">
       </div>
     </aside>
@@ -138,6 +142,18 @@
       <div class="access-actions upload-dialog-actions">
         <button id="cancelArtist" class="secondary-button" type="button">Hủy</button>
         <button id="saveArtist" class="primary-button" type="button">Đổi tên</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="createArtistDialog" class="access-dialog artist-dialog">
+    <div class="access-card">
+      <p class="eyebrow">ARTIST DIRECTORY</p>
+      <h2>Tạo nghệ sĩ</h2>
+      <label class="access-label" for="createArtistNameInput">Tên nghệ sĩ</label>
+      <input id="createArtistNameInput" class="access-input" type="text" maxlength="80" autocomplete="off">
+      <div class="access-actions upload-dialog-actions">
+        <button id="cancelCreateArtist" class="secondary-button" type="button">Hủy</button>
+        <button id="saveCreateArtist" class="primary-button" type="button">Chọn bài hát</button>
       </div>
     </div>
   </dialog>
