@@ -937,10 +937,14 @@ div { background: transparent; }
   }
 }
 
-/* Keep the artist and playlist rows swipeable on small screens. */
+/* Keep artist and playlist lists scrollable after the collapsible-section rules. */
+.sidebar-section .section-body.playlist-list {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 @media (max-width: 640px) {
   .sidebar-section .section-body.playlist-list {
-    max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;

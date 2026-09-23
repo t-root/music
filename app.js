@@ -1033,6 +1033,31 @@ async function uploadFiles(files, targetFolder = '') {
     showToast(`Đã thêm ${audioFiles.length} bài hát lên GitHub.`);
   } catch (error) { showToast(error.message); }
 }
+async function collectDirectoryFiles(directoryHandle, parentPath = directoryHandle.name) {
+  const files = [];
+  for await (const entry of directoryHandle.values()) {
+    const entryPath = `${parentPath}/${entry.name}`;
+    if (entry.kind === 'directory') {
+      files.push(...await collectDirectoryFiles(entry, entryPath));
+      continue;
+    }
+    const file = await entry.getFile();
+    Object.defineProperty(file, 'webkitRelativePath', { configurable: true, value: entryPath });
+    files.push(file);
+  }
+  return files;
+}
+async function chooseFolderUpload() {
+  if (!canWrite) return showToast('Chế độ chỉ nghe.');
+  const fallback = () => document.querySelector('#folderInput').click();
+  if (!window.isSecureContext || typeof window.showDirectoryPicker !== 'function') return fallback();
+  try {
+    const directory = await window.showDirectoryPicker({ mode: 'read' });
+    await uploadFiles(await collectDirectoryFiles(directory));
+  } catch (error) {
+    if (error?.name !== 'AbortError') showToast('Không thể đọc thư mục đã chọn.');
+  }
+}
 function updatePlayer() { const playerBar = document.querySelector('#playerBar'); const live = Boolean(currentTrack && !audio.paused); els.nowTitle.textContent = currentTrack?.title || 'Chưa chọn bài hát'; els.nowArtist.textContent = currentTrack?.artist || 'Chọn một bài để bắt đầu'; els.play.textContent = live ? 'Ⅱ' : '▶'; els.favorite.classList.toggle('active', Boolean(currentTrack && state.favorites.includes(currentTrack.id))); els.favorite.textContent = currentTrack && state.favorites.includes(currentTrack.id) ? '♥' : '♡'; playerBar?.classList.toggle('is-live', live); playerBar?.style.setProperty('--player-energy', (audio.muted ? 0 : audio.volume).toFixed(3)); updateRepeatButton(); syncMediaSession(); }
 function updateRepeatButton() { const button = document.querySelector('#repeatButton'); const labels = { off: 'Tắt lặp', one: 'Lặp bài vô hạn' }; button.classList.toggle('active', repeatMode !== 'off'); button.title = labels[repeatMode]; button.textContent = repeatMode === 'one' ? '↻∞' : '↻'; }
 function updatePlaylistRepeatButton() { const button = document.querySelector('#repeatPlaylistButton'); if (!button) return; button.hidden = view.type !== 'playlist' && view.type !== 'folder'; const label = view.type === 'folder' ? 'Nghệ sĩ' : 'Playlist'; button.classList.toggle('active', playlistRepeat); button.textContent = playlistRepeat ? `↻ ${label}` : `↻ Lặp ${label.toLocaleLowerCase('vi')}`; button.title = playlistRepeat ? `Tắt lặp ${label.toLocaleLowerCase('vi')}` : `Lặp ${label.toLocaleLowerCase('vi')} vô hạn`; }
@@ -1066,6 +1091,7 @@ document.querySelector('#createPlaylist').addEventListener('click', createPlayli
 document.querySelector('#clearCurrentCollectionButton').addEventListener('click', clearCurrentCollection);
 document.querySelector('#fileInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#folderInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
+document.querySelector('#folderUploadButton').addEventListener('click', chooseFolderUpload);
 document.querySelector('#cancelUpload').addEventListener('click', () => { document.querySelector('#uploadDialog').close(); uploadFolderResolve?.(''); uploadFolderResolve = null; });
 document.querySelector('#confirmUpload').addEventListener('click', () => { const value = document.querySelector('#uploadFolderSelect').value; document.querySelector('#uploadDialog').close(); uploadFolderResolve?.(value); uploadFolderResolve = null; });
 document.querySelector('#playAllButton').addEventListener('click', playCurrentList);
