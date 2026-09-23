@@ -1050,8 +1050,9 @@ async function collectDirectoryFiles(directoryHandle, parentPath = directoryHand
 }
 async function chooseFolderUpload() {
   if (!canWrite) return showToast('Chế độ chỉ nghe.');
-  const fallback = () => document.querySelector('#folderInput').click();
-  if (!window.isSecureContext || typeof window.showDirectoryPicker !== 'function') return fallback();
+  if (!window.isSecureContext || typeof window.showDirectoryPicker !== 'function') {
+    return showToast('Tải thư mục cần mở website bằng HTTPS trên trình duyệt hỗ trợ.');
+  }
   try {
     const directory = await window.showDirectoryPicker({ mode: 'read' });
     await uploadFiles(await collectDirectoryFiles(directory));
@@ -1093,7 +1094,6 @@ document.querySelector('#createArtist').addEventListener('click', openCreateArti
 document.querySelector('#clearCurrentCollectionButton').addEventListener('click', clearCurrentCollection);
 document.querySelector('#fileInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#artistFileInput').addEventListener('change', event => { const artistName = pendingArtistUpload; pendingArtistUpload = ''; uploadFiles(event.target.files, artistName); event.target.value = ''; });
-document.querySelector('#folderInput').addEventListener('change', event => { uploadFiles(event.target.files); event.target.value = ''; });
 document.querySelector('#folderUploadButton').addEventListener('click', chooseFolderUpload);
 document.querySelector('#cancelUpload').addEventListener('click', () => { document.querySelector('#uploadDialog').close(); uploadFolderResolve?.(''); uploadFolderResolve = null; });
 document.querySelector('#confirmUpload').addEventListener('click', () => { const value = document.querySelector('#uploadFolderSelect').value; document.querySelector('#uploadDialog').close(); uploadFolderResolve?.(value); uploadFolderResolve = null; });
