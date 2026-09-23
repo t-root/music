@@ -354,9 +354,6 @@ div { background: transparent; }
 }
 
 @media (max-width: 640px) {
-  .collection-manage-button {
-    display: none !important;
-  }
   .sidebar {
     position: relative;
     display: flex;
@@ -396,12 +393,6 @@ div { background: transparent; }
     color: var(--coral) !important;
     border-color: var(--coral) !important;
     background: rgba(142, 240, 209, .1) !important;
-  }
-  .artist-actions {
-    display: flex !important;
-  }
-  .playlist-item .playlist-delete {
-    display: grid !important;
   }
   .sidebar-footer {
     position: absolute;
