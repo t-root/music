@@ -936,3 +936,14 @@ div { background: transparent; }
     transform-origin: left center;
   }
 }
+
+/* Keep the artist and playlist rows swipeable on small screens. */
+@media (max-width: 640px) {
+  .sidebar-section .section-body.playlist-list {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+  }
+}
