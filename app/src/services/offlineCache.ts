@@ -45,3 +45,22 @@ export async function resolvePlayableUri(track: Track): Promise<string> {
 export async function clearCache() {
   await FileSystem.deleteAsync(DIR, { idempotent: true });
 }
+
+let prefetchAllInFlight = false;
+
+// Âm thầm tải dần TOÀN BỘ thư viện về máy (tuần tự, không phải Promise.all,
+// để không dồn tải hết cùng lúc). Bài nào đã có file cục bộ rồi thì
+// prefetchTrack() tự bỏ qua, nên gọi lại hàm này mỗi lần mở app không tốn
+// thêm dung lượng/băng thông. Nhờ vậy sau khi mở app có mạng một lần, dần dần
+// cả thư viện sẽ nghe được lúc mất mạng.
+export async function prefetchAllForOffline(tracks: Track[]) {
+  if (prefetchAllInFlight) return;
+  prefetchAllInFlight = true;
+  try {
+    for (const track of tracks) {
+      if (/^https?:/i.test(track.src)) await prefetchTrack(track);
+    }
+  } finally {
+    prefetchAllInFlight = false;
+  }
+}

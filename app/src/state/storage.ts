@@ -5,11 +5,12 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import type { PersistedState, RepoInfo } from '@/types';
+import type { PersistedState, RepoInfo, Track } from '@/types';
 
 const STATE_KEY = 'nhac-cua-trung-state-v1';
 const REPO_KEY = 'nhac-cua-trung-repo-v1';
 const TOKEN_KEY = 'nhac-cua-trung-github-token';
+const LIBRARY_CACHE_KEY = 'nhac-cua-trung-library-cache-v1';
 
 // Repo mặc định — tương đương getGitHubRepo() tự suy ra từ URL GitHub Pages
 // trong bản web gốc. Bản RN không chạy trong trình duyệt nên không suy ra được,
@@ -56,4 +57,23 @@ export async function saveGitHubToken(token: string) {
 
 export async function clearGitHubToken() {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+
+// Danh sách bài hát tải thành công lần gần nhất từ GitHub — dùng làm phao cứu
+// sinh khi mở app lúc không có mạng (loadLibrary() không gọi API được).
+export async function readLibraryCache(): Promise<{ repo: RepoInfo; tracks: Track[] } | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LIBRARY_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLibraryCache(repo: RepoInfo, tracks: Track[]) {
+  try {
+    await AsyncStorage.setItem(LIBRARY_CACHE_KEY, JSON.stringify({ repo, tracks }));
+  } catch {
+    /* bỏ qua nếu bộ nhớ đầy */
+  }
 }

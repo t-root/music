@@ -98,6 +98,7 @@ const els = {
   favorite: document.querySelector('#favoriteButton'), toast: document.querySelector('#toast')
 };
 const stateKey = 'giai-dieu-state-v1';
+const libraryCacheKey = 'giai-dieu-library-cache-v1';
 const themeColorKey = 'giai-dieu-theme-color-v1';
 const defaultThemeColor = '#8ef0d1';
 const audioExtensions = new Set(['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac']);
@@ -139,6 +140,14 @@ function readState() {
   catch { return { hidden: [], favorites: [], recent: [], playlists: [] }; }
 }
 function saveState() { localStorage.setItem(stateKey, JSON.stringify(state)); }
+function saveLibraryCache() {
+  try { localStorage.setItem(libraryCacheKey, JSON.stringify({ seedTracks, githubRepo, githubBranch })); }
+  catch { /* bỏ qua nếu bộ nhớ đầy */ }
+}
+function readLibraryCache() {
+  try { return JSON.parse(localStorage.getItem(libraryCacheKey) || 'null'); }
+  catch { return null; }
+}
 function normalizeThemeColor(value) {
   const raw = String(value || '').trim().replace(/^#/, '');
   if (!/^(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) return '';
@@ -884,13 +893,35 @@ async function loadLibrary() {
       else state.playlists.push({ id: `playlist:${Date.now()}-${remote.name}`, name: remote.name, trackIds: tracks, synced: true });
     });
     saveState();
+    saveLibraryCache();
     retryUnsyncedPlaylists();
   } catch (error) {
-    seedTracks = [];
-    showToast(error.message === 'GitHub Pages URL required' ? 'Hãy mở trang từ GitHub Pages để đọc nhạc trong repository.' : 'Không đọc được file nhạc từ GitHub. Kiểm tra repository công khai và thử lại.');
+    const cached = readLibraryCache();
+    if (cached && Array.isArray(cached.seedTracks) && cached.seedTracks.length) {
+      seedTracks = cached.seedTracks.map(normalizeTrack);
+      githubRepo = cached.githubRepo || githubRepo;
+      githubBranch = cached.githubBranch || githubBranch;
+      showToast('Không có mạng. Đang dùng danh sách nhạc đã lưu trên máy.');
+    } else {
+      seedTracks = [];
+      showToast(error.message === 'GitHub Pages URL required' ? 'Hãy mở trang từ GitHub Pages để đọc nhạc trong repository.' : 'Không đọc được file nhạc từ GitHub. Kiểm tra repository công khai và thử lại.');
+    }
   }
   renderAll();
   ensureDurations(seedTracks);
+  prefetchAllForOffline();
+}
+function prefetchAllForOffline() {
+  // Âm thầm gửi toàn bộ URL bài hát cho service worker để nó tải dần về cache,
+  // theo cùng cơ chế tuần tự đã dùng cho bài đang phát/bài kế tiếp (xem
+  // preloadNextTrack). Bài nào đã có trong cache rồi thì service worker tự bỏ
+  // qua, nên gọi lại hàm này mỗi lần mở app không tốn thêm băng thông.
+  if (!('serviceWorker' in navigator)) return;
+  const urls = seedTracks.map(track => track.src).filter(src => /^https?:/i.test(src));
+  if (!urls.length) return;
+  navigator.serviceWorker.ready.then(registration => {
+    registration.active?.postMessage({ type: 'prefetch-audio', urls });
+  }).catch(() => {});
 }
 function getExtension(path) { return `.${path.split('.').pop().toLowerCase()}`; }
 function getGitHubRepo() {

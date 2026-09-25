@@ -5,15 +5,17 @@
 import { create } from 'zustand';
 import TrackPlayer, { Capability, Event, State as RNTPState } from 'react-native-track-player';
 import { GitHubClient, parseRepoInput } from '@/api/github';
-import { prefetchTrack, resolvePlayableUri } from '@/services/offlineCache';
+import { prefetchAllForOffline, prefetchTrack, resolvePlayableUri } from '@/services/offlineCache';
 import { probeDurations } from '@/services/durationProbe';
 import {
   DEFAULT_REPO,
   defaultState,
   readGitHubToken,
+  readLibraryCache,
   readPersistedState,
   readRepoConfig,
   saveGitHubToken,
+  saveLibraryCache,
   savePersistedState,
   saveRepoConfig,
 } from '@/state/storage';
@@ -258,6 +260,7 @@ export const useStore = create<Store>((set, get) => ({
 
       set({ client, tracks, persisted, loadStatus: 'ready' });
       await savePersistedState(persisted);
+      await saveLibraryCache(repo, tracks);
 
       // thử đẩy lại các playlist chưa đồng bộ (ví dụ vừa mất mạng lúc sửa)
       for (const p of persisted.playlists.filter((p) => p.synced === false)) {
@@ -272,7 +275,19 @@ export const useStore = create<Store>((set, get) => ({
       probeDurations(tracks, (id, duration) => {
         set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, duration } : t)) }));
       });
+
+      // Âm thầm tải dần toàn bộ thư viện về máy để nghe được lúc mất mạng.
+      prefetchAllForOffline(tracks);
     } catch (error: any) {
+      const cached = await readLibraryCache();
+      if (cached && cached.repo.owner === repo.owner && cached.repo.name === repo.name && cached.tracks.length) {
+        set({ tracks: cached.tracks, loadStatus: 'ready', loadError: null });
+        get().showToast('Không có mạng. Đang dùng danh sách nhạc đã lưu trên máy.');
+        probeDurations(cached.tracks, (id, duration) => {
+          set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, duration } : t)) }));
+        });
+        return;
+      }
       set({ loadStatus: 'error', loadError: error.message || 'Không tải được thư viện.' });
       get().showToast(
         error.message === 'GitHub Pages URL required'
