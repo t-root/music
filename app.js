@@ -751,6 +751,17 @@ function drawVisualizer() {
 }
 
 window.addEventListener('resize', resizeVisualizer);
+// F11 (fullscreen trình duyệt, ẩn thanh địa chỉ/tab) không bắn ra sự kiện Fullscreen
+// API nào cả, nên phải đoán qua việc kích thước cửa sổ khớp kích thước màn hình.
+function checkBrowserFullscreen() {
+  const isFull = Boolean(document.fullscreenElement) ||
+    (Math.abs(window.innerWidth - screen.width) < 2 && Math.abs(window.innerHeight - screen.height) < 2);
+  document.body.classList.toggle('is-browser-fullscreen', isFull);
+  resizeVisualizer();
+}
+window.addEventListener('resize', checkBrowserFullscreen);
+document.addEventListener('fullscreenchange', checkBrowserFullscreen);
+checkBrowserFullscreen();
 resizeVisualizer();
 drawVisualizer();
 function md5(input) {

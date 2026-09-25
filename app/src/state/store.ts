@@ -185,6 +185,9 @@ export const useStore = create<Store>((set, get) => ({
         Capability.Stop,
       ],
       compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext, Capability.SkipToPrevious],
+      // Bắt buộc phải có để Event.PlaybackProgressUpdated được bắn định kỳ,
+      // nếu không positionSec/durationSec sẽ đứng yên và timeline không chạy.
+      progressUpdateEventInterval: 1,
     }).catch(() => {});
 
     const [savedRepo, token, persisted] = await Promise.all([readRepoConfig(), readGitHubToken(), readPersistedState()]);
